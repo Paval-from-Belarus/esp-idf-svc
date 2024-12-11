@@ -846,6 +846,7 @@ pub enum DiscoveryMode {
     GeneralDiscoverable = 2,
 }
 
+#[allow(unused)]
 const ESP_BT_GAP_EIR_DATA_LEN: usize = 240;
 
 #[derive(Debug, Default)]
@@ -855,76 +856,72 @@ pub struct DeviceData {
     pub rssi: i8,
 }
 
-
 #[repr(u32)]
 enum CbEvent {
     /// Device discovery result event
-    ESP_BT_GAP_DISC_RES_EVT = 0,
+    EspBtGapDiscResEvt = 0,
     /// Discovery state changed event
-    ESP_BT_GAP_DISC_STATE_CHANGED_EVT = 1,
+    EspBtGapDiscStateChangedEvt = 1,
     /// Get remote services event
-    ESP_BT_GAP_RMT_SRVCS_EVT = 2,
+    EspBtGapRmtSrvcsEvt = 2,
     /// Get remote service record event */
-    ESP_BT_GAP_RMT_SRVC_REC_EVT = 3,
+    EspBtGapRmtSrvcRecEvt = 3,
     /// Authentication complete event */
-    ESP_BT_GAP_AUTH_CMPL_EVT = 4,
+    EspBtGapAuthCmplEvt = 4,
     /// Legacy Pairing Pin code request */
-    ESP_BT_GAP_PIN_REQ_EVT = 5,
+    EspBtGapPinReqEvt = 5,
     /// Security Simple Pairing User Confirmation request. */
-    ESP_BT_GAP_CFM_REQ_EVT = 6,
+    EspBtGapCfmReqEvt = 6,
     /// Security Simple Pairing Passkey Notification */
-    ESP_BT_GAP_KEY_NOTIF_EVT = 7,
+    EspBtGapKeyNotifEvt = 7,
     /// Security Simple Pairing Passkey request */
-    ESP_BT_GAP_KEY_REQ_EVT = 8,
+    EspBtGapKeyReqEvt = 8,
     /// Read rssi event
-    ESP_BT_GAP_READ_RSSI_DELTA_EVT = 9,
+    EspBtGapReadRssiDeltaEvt = 9,
     /// Config EIR data event
-    ESP_BT_GAP_CONFIG_EIR_DATA_EVT = 10,
+    EspBtGapConfigEirDataEvt = 10,
     /// Set AFH channels event
-    ESP_BT_GAP_SET_AFH_CHANNELS_EVT = 11,
+    EspBtGapSetAfhChannelsEvt = 11,
     /// Read Remote Name event
-    ESP_BT_GAP_READ_REMOTE_NAME_EVT = 12,
+    EspBtGapReadRemoteNameEvt = 12,
     /// remove bond device complete event */
-    ESP_BT_GAP_MODE_CHG_EVT = 13,
+    EspBtGapModeChgEvt = 13,
     /// QOS complete event */
-    ESP_BT_GAP_REMOVE_BOND_DEV_COMPLETE_EVT = 14,
+    EspBtGapRemoveBondDevCompleteEvt = 14,
     /// ACL connection complete status event */
-    ESP_BT_GAP_QOS_CMPL_EVT = 15,
+    EspBtGapQosCmplEvt = 15,
     /// ACL disconnection complete status event */
-    ESP_BT_GAP_ACL_CONN_CMPL_STAT_EVT = 16,
-    ESP_BT_GAP_ACL_DISCONN_CMPL_STAT_EVT = 17,
-    ESP_BT_GAP_EVT_MAX = 18,
+    EspBtGapAclConnCmplStatEvt = 16,
+    EspBtGapAclDisconnCmplStatEvt = 17,
+    EspBtGapEvtMax = 18,
 }
 
 impl TryFrom<u32> for CbEvent {
     type Error = ();
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let kind = match value {
-            0 => Self::ESP_BT_GAP_DISC_RES_EVT,
-            1 => Self::ESP_BT_GAP_DISC_STATE_CHANGED_EVT,
-            2 => Self::ESP_BT_GAP_RMT_SRVCS_EVT,
-            3 => Self::ESP_BT_GAP_RMT_SRVC_REC_EVT,
-            4 => Self::ESP_BT_GAP_AUTH_CMPL_EVT,
-            5 => Self::ESP_BT_GAP_PIN_REQ_EVT,
-            6 => Self::ESP_BT_GAP_CFM_REQ_EVT,
-            7 => Self::ESP_BT_GAP_KEY_NOTIF_EVT,
-            8 => Self::ESP_BT_GAP_KEY_REQ_EVT,
-            9 => Self::ESP_BT_GAP_READ_RSSI_DELTA_EVT,
-            10 => Self::ESP_BT_GAP_CONFIG_EIR_DATA_EVT,
-            11 => Self::ESP_BT_GAP_SET_AFH_CHANNELS_EVT,
-            12 => Self::ESP_BT_GAP_READ_REMOTE_NAME_EVT,
-            13 => Self::ESP_BT_GAP_MODE_CHG_EVT,
-            14 => Self::ESP_BT_GAP_REMOVE_BOND_DEV_COMPLETE_EVT,
-            15 => Self::ESP_BT_GAP_QOS_CMPL_EVT,
-            16 => Self::ESP_BT_GAP_ACL_CONN_CMPL_STAT_EVT,
-            17 => Self::ESP_BT_GAP_ACL_DISCONN_CMPL_STAT_EVT,
-            18 => Self::ESP_BT_GAP_EVT_MAX,
-            _ => {
-                return Err(());
-            }
-        };
 
-        Ok(kind)
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(CbEvent::EspBtGapDiscResEvt),
+            1 => Ok(CbEvent::EspBtGapDiscStateChangedEvt),
+            2 => Ok(CbEvent::EspBtGapRmtSrvcsEvt),
+            3 => Ok(CbEvent::EspBtGapRmtSrvcRecEvt),
+            4 => Ok(CbEvent::EspBtGapAuthCmplEvt),
+            5 => Ok(CbEvent::EspBtGapPinReqEvt),
+            6 => Ok(CbEvent::EspBtGapCfmReqEvt),
+            7 => Ok(CbEvent::EspBtGapKeyNotifEvt),
+            8 => Ok(CbEvent::EspBtGapKeyReqEvt),
+            9 => Ok(CbEvent::EspBtGapReadRssiDeltaEvt),
+            10 => Ok(CbEvent::EspBtGapConfigEirDataEvt),
+            11 => Ok(CbEvent::EspBtGapSetAfhChannelsEvt),
+            12 => Ok(CbEvent::EspBtGapReadRemoteNameEvt),
+            13 => Ok(CbEvent::EspBtGapModeChgEvt),
+            14 => Ok(CbEvent::EspBtGapRemoveBondDevCompleteEvt),
+            15 => Ok(CbEvent::EspBtGapQosCmplEvt),
+            16 => Ok(CbEvent::EspBtGapAclConnCmplStatEvt),
+            17 => Ok(CbEvent::EspBtGapAclDisconnCmplStatEvt),
+            18 => Ok(CbEvent::EspBtGapEvtMax),
+            _ => Err(()),
+        }
     }
 }
 
@@ -984,7 +981,7 @@ impl DeviceData {
     }
 
     fn set_name_from_eiq(&mut self, eiq: *mut u8) -> Result<(), ()> {
-        let mut ptr_name: *mut u8; 
+        let mut ptr_name: *mut u8;
         let mut output_len = 0u8;
 
         if eiq.is_null() {
@@ -1014,7 +1011,10 @@ impl DeviceData {
             output_len = output_len.min(ESP_BT_GAP_MAX_BDNAME_LEN as u8);
 
             let raw_name = unsafe {
-                core::slice::from_raw_parts(ptr_name.cast::<u8>(), output_len as usize)
+                core::slice::from_raw_parts(
+                    ptr_name.cast::<u8>(),
+                    output_len as usize,
+                )
             };
 
             let name = alloc::string::String::from_utf8_lossy(raw_name);
@@ -1033,7 +1033,7 @@ unsafe extern "C" fn handle_gap_event(
     let event = CbEvent::try_from(raw_event).expect("invalid event");
 
     match event {
-        CbEvent::ESP_BT_GAP_DISC_RES_EVT => {
+        CbEvent::EspBtGapDiscResEvt => {
             let device_data = DeviceData::new_from(params);
 
             log::debug!("New device: {:?}", device_data);
