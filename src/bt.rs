@@ -2,11 +2,13 @@ use core::cell::UnsafeCell;
 use core::fmt::{self, Debug};
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicBool, Ordering};
+use std::string::ToString;
 
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 
 use ::log::info;
+use esp_idf_hal::delay;
 
 use num_enum::TryFromPrimitive;
 
@@ -113,10 +115,16 @@ impl BtUuid {
     pub const fn as_bytes(&self) -> &[u8] {
         match self.0.len {
             2 => unsafe {
-                core::slice::from_raw_parts(&self.0.uuid.uuid128 as *const _ as *const _, 2)
+                core::slice::from_raw_parts(
+                    &self.0.uuid.uuid128 as *const _ as *const _,
+                    2,
+                )
             },
             4 => unsafe {
-                core::slice::from_raw_parts(&self.0.uuid.uuid128 as *const _ as *const _, 4)
+                core::slice::from_raw_parts(
+                    &self.0.uuid.uuid128 as *const _ as *const _,
+                    4,
+                )
             },
             16 => unsafe { &self.0.uuid.uuid128 },
             _ => unreachable!(),
@@ -176,7 +184,9 @@ where
 
         self.initialized
             .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
-            .map_err(|_| EspError::from_infallible::<ESP_ERR_INVALID_STATE>())?;
+            .map_err(|_| {
+                EspError::from_infallible::<ESP_ERR_INVALID_STATE>()
+            })?;
 
         Ok(())
     }
@@ -184,7 +194,9 @@ where
     pub fn take(&self) -> Result<(), EspError> {
         self.initialized
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .map_err(|_| EspError::from_infallible::<ESP_ERR_INVALID_STATE>())?;
+            .map_err(|_| {
+                EspError::from_infallible::<ESP_ERR_INVALID_STATE>()
+            })?;
 
         Ok(())
     }
@@ -233,15 +245,15 @@ pub trait BleEnabled: BtMode {}
 pub trait BtClassicEnabled: BtMode {}
 
 #[cfg(esp32)]
-#[cfg(not(esp_idf_btdm_ctrl_mode_ble_only))]
+// #[cfg(not(esp_idf_btdm_ctrl_mode_ble_only))]
 #[derive(Clone)]
 pub struct BtClassic(());
 #[cfg(esp32)]
-#[cfg(not(esp_idf_btdm_ctrl_mode_ble_only))]
+// #[cfg(not(esp_idf_btdm_ctrl_mode_ble_only))]
 impl BtClassicEnabled for BtClassic {}
 
 #[cfg(esp32)]
-#[cfg(not(esp_idf_btdm_ctrl_mode_ble_only))]
+// #[cfg(not(esp_idf_btdm_ctrl_mode_ble_only))]
 impl BtMode for BtClassic {
     fn mode() -> esp_bt_mode_t {
         #[cfg(not(esp_idf_btdm_ctrl_mode_btdm))]
@@ -307,14 +319,19 @@ pub enum BtStatus {
     AuthFailure = esp_bt_status_t_ESP_BT_STATUS_AUTH_FAILURE,
     RemoteDeviceDown = esp_bt_status_t_ESP_BT_STATUS_RMT_DEV_DOWN,
     AuthRejected = esp_bt_status_t_ESP_BT_STATUS_AUTH_REJECTED,
-    InvalidStaticRandAddr = esp_bt_status_t_ESP_BT_STATUS_INVALID_STATIC_RAND_ADDR,
+    InvalidStaticRandAddr =
+        esp_bt_status_t_ESP_BT_STATUS_INVALID_STATIC_RAND_ADDR,
     Pending = esp_bt_status_t_ESP_BT_STATUS_PENDING,
-    UnacceptedConnInterval = esp_bt_status_t_ESP_BT_STATUS_UNACCEPT_CONN_INTERVAL,
+    UnacceptedConnInterval =
+        esp_bt_status_t_ESP_BT_STATUS_UNACCEPT_CONN_INTERVAL,
     ParamOutOfRange = esp_bt_status_t_ESP_BT_STATUS_PARAM_OUT_OF_RANGE,
     Timeout = esp_bt_status_t_ESP_BT_STATUS_TIMEOUT,
-    UnsupportedPeerLeDataLen = esp_bt_status_t_ESP_BT_STATUS_PEER_LE_DATA_LEN_UNSUPPORTED,
-    UnsupportedControlLeDataLen = esp_bt_status_t_ESP_BT_STATUS_CONTROL_LE_DATA_LEN_UNSUPPORTED,
-    IllegalParamFormat = esp_bt_status_t_ESP_BT_STATUS_ERR_ILLEGAL_PARAMETER_FMT,
+    UnsupportedPeerLeDataLen =
+        esp_bt_status_t_ESP_BT_STATUS_PEER_LE_DATA_LEN_UNSUPPORTED,
+    UnsupportedControlLeDataLen =
+        esp_bt_status_t_ESP_BT_STATUS_CONTROL_LE_DATA_LEN_UNSUPPORTED,
+    IllegalParamFormat =
+        esp_bt_status_t_ESP_BT_STATUS_ERR_ILLEGAL_PARAMETER_FMT,
     MemoryFull = esp_bt_status_t_ESP_BT_STATUS_MEMORY_FULL,
     EirTooLarge = esp_bt_status_t_ESP_BT_STATUS_EIR_TOO_LARGE,
     HciSuccess = esp_bt_status_t_ESP_BT_STATUS_HCI_SUCCESS,
@@ -326,63 +343,91 @@ pub enum BtStatus {
     HciKeyMissing = esp_bt_status_t_ESP_BT_STATUS_HCI_KEY_MISSING,
     HciMemoryFull = esp_bt_status_t_ESP_BT_STATUS_HCI_MEMORY_FULL,
     HciConnTimeout = esp_bt_status_t_ESP_BT_STATUS_HCI_CONNECTION_TOUT,
-    HciConnectionsExhausted = esp_bt_status_t_ESP_BT_STATUS_HCI_MAX_NUM_OF_CONNECTIONS,
+    HciConnectionsExhausted =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_MAX_NUM_OF_CONNECTIONS,
     HciScosExhausted = esp_bt_status_t_ESP_BT_STATUS_HCI_MAX_NUM_OF_SCOS,
     HciConnectionExists = esp_bt_status_t_ESP_BT_STATUS_HCI_CONNECTION_EXISTS,
     HciCommandDisallowed = esp_bt_status_t_ESP_BT_STATUS_HCI_COMMAND_DISALLOWED,
-    HciHostResourcesRejected = esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_REJECT_RESOURCES,
-    HciHostSecurityRejected = esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_REJECT_SECURITY,
-    HciHostDevideRejected = esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_REJECT_DEVICE,
+    HciHostResourcesRejected =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_REJECT_RESOURCES,
+    HciHostSecurityRejected =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_REJECT_SECURITY,
+    HciHostDevideRejected =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_REJECT_DEVICE,
     HciHostTimeout = esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_TIMEOUT,
     HciUnsupportedValue = esp_bt_status_t_ESP_BT_STATUS_HCI_UNSUPPORTED_VALUE,
-    HciIllegalParamFormat = esp_bt_status_t_ESP_BT_STATUS_HCI_ILLEGAL_PARAMETER_FMT,
+    HciIllegalParamFormat =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_ILLEGAL_PARAMETER_FMT,
     HciPeerUser = esp_bt_status_t_ESP_BT_STATUS_HCI_PEER_USER,
     HciPeerLowResources = esp_bt_status_t_ESP_BT_STATUS_HCI_PEER_LOW_RESOURCES,
     HciPeerPowerOff = esp_bt_status_t_ESP_BT_STATUS_HCI_PEER_POWER_OFF,
-    HciConnectionCauseLocalHost = esp_bt_status_t_ESP_BT_STATUS_HCI_CONN_CAUSE_LOCAL_HOST,
+    HciConnectionCauseLocalHost =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_CONN_CAUSE_LOCAL_HOST,
     HciRepeatedAttempts = esp_bt_status_t_ESP_BT_STATUS_HCI_REPEATED_ATTEMPTS,
-    HciPairingNotAllowed = esp_bt_status_t_ESP_BT_STATUS_HCI_PAIRING_NOT_ALLOWED,
+    HciPairingNotAllowed =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_PAIRING_NOT_ALLOWED,
     HciUnkownLmpPdu = esp_bt_status_t_ESP_BT_STATUS_HCI_UNKNOWN_LMP_PDU,
-    HciUnsupportedRemFeature = esp_bt_status_t_ESP_BT_STATUS_HCI_UNSUPPORTED_REM_FEATURE,
-    HciScoOffsetRejected = esp_bt_status_t_ESP_BT_STATUS_HCI_SCO_OFFSET_REJECTED,
-    HciScoInternalRejected = esp_bt_status_t_ESP_BT_STATUS_HCI_SCO_INTERVAL_REJECTED,
+    HciUnsupportedRemFeature =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_UNSUPPORTED_REM_FEATURE,
+    HciScoOffsetRejected =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_SCO_OFFSET_REJECTED,
+    HciScoInternalRejected =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_SCO_INTERVAL_REJECTED,
     HciScoAirMode = esp_bt_status_t_ESP_BT_STATUS_HCI_SCO_AIR_MODE,
     HciInvalidLmpParam = esp_bt_status_t_ESP_BT_STATUS_HCI_INVALID_LMP_PARAM,
     HciUnspecified = esp_bt_status_t_ESP_BT_STATUS_HCI_UNSPECIFIED,
-    HciUnsupportedLmpParameters = esp_bt_status_t_ESP_BT_STATUS_HCI_UNSUPPORTED_LMP_PARAMETERS,
-    HciRoleChangeNotAllowed = esp_bt_status_t_ESP_BT_STATUS_HCI_ROLE_CHANGE_NOT_ALLOWED,
-    HciLmpResponseTimeout = esp_bt_status_t_ESP_BT_STATUS_HCI_LMP_RESPONSE_TIMEOUT,
-    HciLmpErrTransactionCollision = esp_bt_status_t_ESP_BT_STATUS_HCI_LMP_ERR_TRANS_COLLISION,
+    HciUnsupportedLmpParameters =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_UNSUPPORTED_LMP_PARAMETERS,
+    HciRoleChangeNotAllowed =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_ROLE_CHANGE_NOT_ALLOWED,
+    HciLmpResponseTimeout =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_LMP_RESPONSE_TIMEOUT,
+    HciLmpErrTransactionCollision =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_LMP_ERR_TRANS_COLLISION,
     HciLmpPduNotAllowed = esp_bt_status_t_ESP_BT_STATUS_HCI_LMP_PDU_NOT_ALLOWED,
-    HciEntryModeNotAcceptable = esp_bt_status_t_ESP_BT_STATUS_HCI_ENCRY_MODE_NOT_ACCEPTABLE,
+    HciEntryModeNotAcceptable =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_ENCRY_MODE_NOT_ACCEPTABLE,
     HciUnitKeyUsed = esp_bt_status_t_ESP_BT_STATUS_HCI_UNIT_KEY_USED,
     HciUnsupportedQos = esp_bt_status_t_ESP_BT_STATUS_HCI_QOS_NOT_SUPPORTED,
     HciInstantPassed = esp_bt_status_t_ESP_BT_STATUS_HCI_INSTANT_PASSED,
     HciUnsupportedPairingWithUnitKey =
         esp_bt_status_t_ESP_BT_STATUS_HCI_PAIRING_WITH_UNIT_KEY_NOT_SUPPORTED,
-    HciDiffTransactionCollision = esp_bt_status_t_ESP_BT_STATUS_HCI_DIFF_TRANSACTION_COLLISION,
+    HciDiffTransactionCollision =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_DIFF_TRANSACTION_COLLISION,
     HciUndefined0x2b = esp_bt_status_t_ESP_BT_STATUS_HCI_UNDEFINED_0x2B,
-    HciQosInvalidParam = esp_bt_status_t_ESP_BT_STATUS_HCI_QOS_UNACCEPTABLE_PARAM,
+    HciQosInvalidParam =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_QOS_UNACCEPTABLE_PARAM,
     HciQosRejected = esp_bt_status_t_ESP_BT_STATUS_HCI_QOS_REJECTED,
-    HciUnsupportedChanClassification = esp_bt_status_t_ESP_BT_STATUS_HCI_CHAN_CLASSIF_NOT_SUPPORTED,
-    HciInsufficientSecurity = esp_bt_status_t_ESP_BT_STATUS_HCI_INSUFFCIENT_SECURITY,
+    HciUnsupportedChanClassification =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_CHAN_CLASSIF_NOT_SUPPORTED,
+    HciInsufficientSecurity =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_INSUFFCIENT_SECURITY,
     HciParamOutOfRange = esp_bt_status_t_ESP_BT_STATUS_HCI_PARAM_OUT_OF_RANGE,
     HciUndefined0x31 = esp_bt_status_t_ESP_BT_STATUS_HCI_UNDEFINED_0x31,
-    HciRoleSwitchPending = esp_bt_status_t_ESP_BT_STATUS_HCI_ROLE_SWITCH_PENDING,
+    HciRoleSwitchPending =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_ROLE_SWITCH_PENDING,
     HciUndefined0x33 = esp_bt_status_t_ESP_BT_STATUS_HCI_UNDEFINED_0x33,
-    HciReservedSlotViolation = esp_bt_status_t_ESP_BT_STATUS_HCI_RESERVED_SLOT_VIOLATION,
+    HciReservedSlotViolation =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_RESERVED_SLOT_VIOLATION,
     HciRoleSwitchFailed = esp_bt_status_t_ESP_BT_STATUS_HCI_ROLE_SWITCH_FAILED,
-    HciInqRespDataTooLarge = esp_bt_status_t_ESP_BT_STATUS_HCI_INQ_RSP_DATA_TOO_LARGE,
-    HciSimplePairingNotSupported = esp_bt_status_t_ESP_BT_STATUS_HCI_SIMPLE_PAIRING_NOT_SUPPORTED,
+    HciInqRespDataTooLarge =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_INQ_RSP_DATA_TOO_LARGE,
+    HciSimplePairingNotSupported =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_SIMPLE_PAIRING_NOT_SUPPORTED,
     HciHostBusyPairing = esp_bt_status_t_ESP_BT_STATUS_HCI_HOST_BUSY_PAIRING,
-    HciRejNoSuitableChannel = esp_bt_status_t_ESP_BT_STATUS_HCI_REJ_NO_SUITABLE_CHANNEL,
+    HciRejNoSuitableChannel =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_REJ_NO_SUITABLE_CHANNEL,
     HciControllerBusy = esp_bt_status_t_ESP_BT_STATUS_HCI_CONTROLLER_BUSY,
-    HciUnsupportedConnectionInterval = esp_bt_status_t_ESP_BT_STATUS_HCI_UNACCEPT_CONN_INTERVAL,
-    HciDirectedAdvertisingTimeout = esp_bt_status_t_ESP_BT_STATUS_HCI_DIRECTED_ADVERTISING_TIMEOUT,
+    HciUnsupportedConnectionInterval =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_UNACCEPT_CONN_INTERVAL,
+    HciDirectedAdvertisingTimeout =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_DIRECTED_ADVERTISING_TIMEOUT,
     HciConnectionTimeoutDueToMiscFailure =
         esp_bt_status_t_ESP_BT_STATUS_HCI_CONN_TOUT_DUE_TO_MIC_FAILURE,
-    HciConnectionEstablishmentFailed = esp_bt_status_t_ESP_BT_STATUS_HCI_CONN_FAILED_ESTABLISHMENT,
-    HciMacConnectionFailed = esp_bt_status_t_ESP_BT_STATUS_HCI_MAC_CONNECTION_FAILED,
+    HciConnectionEstablishmentFailed =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_CONN_FAILED_ESTABLISHMENT,
+    HciMacConnectionFailed =
+        esp_bt_status_t_ESP_BT_STATUS_HCI_MAC_CONNECTION_FAILED,
 }
 
 static MEM_FREED: mutex::Mutex<bool> = mutex::Mutex::new(false);
@@ -408,7 +453,9 @@ pub fn reduce_bt_memory<'d, B: BluetoothModemPeripheral>(
 }
 
 #[cfg(esp_idf_btdm_ctrl_mode_btdm)]
-pub fn free_bt_memory<B: BluetoothModemPeripheral>(_modem: B) -> Result<(), EspError> {
+pub fn free_bt_memory<B: BluetoothModemPeripheral>(
+    _modem: B,
+) -> Result<(), EspError> {
     let mut mem_freed = MEM_FREED.lock();
 
     if *mem_freed {
@@ -467,7 +514,8 @@ where
         #[cfg(esp32)]
         let mut bt_cfg = esp_bt_controller_config_t {
             magic: crate::sys::ESP_BT_CONTROLLER_CONFIG_MAGIC_VAL,
-            controller_task_stack_size: crate::sys::ESP_TASK_BT_CONTROLLER_STACK as _,
+            controller_task_stack_size: crate::sys::ESP_TASK_BT_CONTROLLER_STACK
+                as _,
             controller_task_prio: crate::sys::ESP_TASK_BT_CONTROLLER_PRIO as _,
             hci_uart_no: crate::sys::BT_HCI_UART_NO_DEFAULT as _,
             hci_uart_baudrate: crate::sys::BT_HCI_UART_BAUDRATE_DEFAULT,
@@ -475,20 +523,27 @@ where
             scan_duplicate_type: crate::sys::SCAN_DUPLICATE_TYPE_VALUE as _,
             normal_adv_size: crate::sys::NORMAL_SCAN_DUPLICATE_CACHE_SIZE as _,
             mesh_adv_size: crate::sys::MESH_DUPLICATE_SCAN_CACHE_SIZE as _,
-            send_adv_reserved_size: crate::sys::SCAN_SEND_ADV_RESERVED_SIZE as _,
+            send_adv_reserved_size: crate::sys::SCAN_SEND_ADV_RESERVED_SIZE
+                as _,
             controller_debug_flag: crate::sys::CONTROLLER_ADV_LOST_DEBUG_BIT,
             mode: M::mode() as _,
             ble_max_conn: crate::sys::CONFIG_BTDM_CTRL_BLE_MAX_CONN_EFF as _,
-            bt_max_acl_conn: crate::sys::CONFIG_BTDM_CTRL_BR_EDR_MAX_ACL_CONN_EFF as _,
-            bt_sco_datapath: crate::sys::CONFIG_BTDM_CTRL_BR_EDR_SCO_DATA_PATH_EFF as _,
+            bt_max_acl_conn:
+                crate::sys::CONFIG_BTDM_CTRL_BR_EDR_MAX_ACL_CONN_EFF as _,
+            bt_sco_datapath:
+                crate::sys::CONFIG_BTDM_CTRL_BR_EDR_SCO_DATA_PATH_EFF as _,
             auto_latency: crate::sys::BTDM_CTRL_AUTO_LATENCY_EFF != 0,
-            bt_legacy_auth_vs_evt: crate::sys::BTDM_CTRL_LEGACY_AUTH_VENDOR_EVT_EFF != 0,
-            bt_max_sync_conn: crate::sys::CONFIG_BTDM_CTRL_BR_EDR_MAX_SYNC_CONN_EFF as _,
-            ble_sca: crate::sys::CONFIG_BTDM_BLE_SLEEP_CLOCK_ACCURACY_INDEX_EFF as _,
+            bt_legacy_auth_vs_evt:
+                crate::sys::BTDM_CTRL_LEGACY_AUTH_VENDOR_EVT_EFF != 0,
+            bt_max_sync_conn:
+                crate::sys::CONFIG_BTDM_CTRL_BR_EDR_MAX_SYNC_CONN_EFF as _,
+            ble_sca: crate::sys::CONFIG_BTDM_BLE_SLEEP_CLOCK_ACCURACY_INDEX_EFF
+                as _,
             pcm_role: crate::sys::CONFIG_BTDM_CTRL_PCM_ROLE_EFF as _,
             pcm_polar: crate::sys::CONFIG_BTDM_CTRL_PCM_POLAR_EFF as _,
             hli: crate::sys::BTDM_CTRL_HLI != 0,
-            dup_list_refresh_period: crate::sys::SCAN_DUPL_CACHE_REFRESH_PERIOD as _,
+            dup_list_refresh_period: crate::sys::SCAN_DUPL_CACHE_REFRESH_PERIOD
+                as _,
             ..Default::default()
         };
 
@@ -496,16 +551,20 @@ where
         let mut bt_cfg = esp_bt_controller_config_t {
             magic: crate::sys::ESP_BT_CTRL_CONFIG_MAGIC_VAL as _,
             version: crate::sys::ESP_BT_CTRL_CONFIG_VERSION as _,
-            controller_task_stack_size: crate::sys::ESP_TASK_BT_CONTROLLER_STACK as _,
+            controller_task_stack_size: crate::sys::ESP_TASK_BT_CONTROLLER_STACK
+                as _,
             controller_task_prio: crate::sys::ESP_TASK_BT_CONTROLLER_PRIO as _,
-            controller_task_run_cpu: crate::sys::CONFIG_BT_CTRL_PINNED_TO_CORE as _,
+            controller_task_run_cpu: crate::sys::CONFIG_BT_CTRL_PINNED_TO_CORE
+                as _,
             bluetooth_mode: crate::sys::CONFIG_BT_CTRL_MODE_EFF as _,
             ble_max_act: crate::sys::CONFIG_BT_CTRL_BLE_MAX_ACT_EFF as _,
             sleep_mode: crate::sys::CONFIG_BT_CTRL_SLEEP_MODE_EFF as _,
             sleep_clock: crate::sys::CONFIG_BT_CTRL_SLEEP_CLOCK_EFF as _,
-            ble_st_acl_tx_buf_nb: crate::sys::CONFIG_BT_CTRL_BLE_STATIC_ACL_TX_BUF_NB as _,
+            ble_st_acl_tx_buf_nb:
+                crate::sys::CONFIG_BT_CTRL_BLE_STATIC_ACL_TX_BUF_NB as _,
             ble_hw_cca_check: crate::sys::CONFIG_BT_CTRL_HW_CCA_EFF as _,
-            ble_adv_dup_filt_max: crate::sys::CONFIG_BT_CTRL_ADV_DUP_FILT_MAX as _,
+            ble_adv_dup_filt_max: crate::sys::CONFIG_BT_CTRL_ADV_DUP_FILT_MAX
+                as _,
             coex_param_en: false,
             ce_len_type: crate::sys::CONFIG_BT_CTRL_CE_LENGTH_TYPE_EFF as _,
             coex_use_hooks: false,
@@ -535,16 +594,20 @@ where
         let mut bt_cfg = esp_bt_controller_config_t {
             magic: crate::sys::ESP_BT_CTRL_CONFIG_MAGIC_VAL,
             version: crate::sys::ESP_BT_CTRL_CONFIG_VERSION,
-            controller_task_stack_size: crate::sys::ESP_TASK_BT_CONTROLLER_STACK as _,
+            controller_task_stack_size: crate::sys::ESP_TASK_BT_CONTROLLER_STACK
+                as _,
             controller_task_prio: crate::sys::ESP_TASK_BT_CONTROLLER_PRIO as _,
-            controller_task_run_cpu: crate::sys::CONFIG_BT_CTRL_PINNED_TO_CORE as _,
+            controller_task_run_cpu: crate::sys::CONFIG_BT_CTRL_PINNED_TO_CORE
+                as _,
             bluetooth_mode: crate::sys::CONFIG_BT_CTRL_MODE_EFF as _,
             ble_max_act: crate::sys::CONFIG_BT_CTRL_BLE_MAX_ACT_EFF as _,
             sleep_mode: crate::sys::CONFIG_BT_CTRL_SLEEP_MODE_EFF as _,
             sleep_clock: crate::sys::CONFIG_BT_CTRL_SLEEP_CLOCK_EFF as _,
-            ble_st_acl_tx_buf_nb: crate::sys::CONFIG_BT_CTRL_BLE_STATIC_ACL_TX_BUF_NB as _,
+            ble_st_acl_tx_buf_nb:
+                crate::sys::CONFIG_BT_CTRL_BLE_STATIC_ACL_TX_BUF_NB as _,
             ble_hw_cca_check: crate::sys::CONFIG_BT_CTRL_HW_CCA_EFF as _,
-            ble_adv_dup_filt_max: crate::sys::CONFIG_BT_CTRL_ADV_DUP_FILT_MAX as _,
+            ble_adv_dup_filt_max: crate::sys::CONFIG_BT_CTRL_ADV_DUP_FILT_MAX
+                as _,
             ce_len_type: crate::sys::CONFIG_BT_CTRL_CE_LENGTH_TYPE_EFF as _,
             hci_tl_type: crate::sys::CONFIG_BT_CTRL_HCI_TL_EFF as _,
             hci_tl_funcs: core::ptr::null_mut(),
@@ -565,40 +628,60 @@ where
             coex_param_en: false,
             coex_use_hooks: false,
             ble_50_feat_supp: crate::sys::BT_CTRL_50_FEATURE_SUPPORT != 0,
-            dup_list_refresh_period: crate::sys::DUPL_SCAN_CACHE_REFRESH_PERIOD as _,
-            scan_backoff_upperlimitmax: crate::sys::BT_CTRL_SCAN_BACKOFF_UPPERLIMITMAX as _,
+            dup_list_refresh_period: crate::sys::DUPL_SCAN_CACHE_REFRESH_PERIOD
+                as _,
+            scan_backoff_upperlimitmax:
+                crate::sys::BT_CTRL_SCAN_BACKOFF_UPPERLIMITMAX as _,
             ..Default::default()
         };
 
         #[cfg(not(any(esp32, esp32s3, esp32c3)))]
         let mut bt_cfg = esp_bt_controller_config_t {
             config_version: 0x20231124,
-            ble_ll_resolv_list_size: crate::sys::CONFIG_BT_LE_LL_RESOLV_LIST_SIZE as _,
-            ble_hci_evt_hi_buf_count: crate::sys::DEFAULT_BT_LE_HCI_EVT_HI_BUF_COUNT as _,
-            ble_hci_evt_lo_buf_count: crate::sys::DEFAULT_BT_LE_HCI_EVT_LO_BUF_COUNT as _,
-            ble_ll_sync_list_cnt: crate::sys::DEFAULT_BT_LE_MAX_PERIODIC_ADVERTISER_LIST as _,
+            ble_ll_resolv_list_size:
+                crate::sys::CONFIG_BT_LE_LL_RESOLV_LIST_SIZE as _,
+            ble_hci_evt_hi_buf_count:
+                crate::sys::DEFAULT_BT_LE_HCI_EVT_HI_BUF_COUNT as _,
+            ble_hci_evt_lo_buf_count:
+                crate::sys::DEFAULT_BT_LE_HCI_EVT_LO_BUF_COUNT as _,
+            ble_ll_sync_list_cnt:
+                crate::sys::DEFAULT_BT_LE_MAX_PERIODIC_ADVERTISER_LIST as _,
             ble_ll_sync_cnt: crate::sys::DEFAULT_BT_LE_MAX_PERIODIC_SYNCS as _,
-            ble_ll_rsp_dup_list_count: crate::sys::CONFIG_BT_LE_LL_DUP_SCAN_LIST_COUNT as _,
-            ble_ll_adv_dup_list_count: crate::sys::CONFIG_BT_LE_LL_DUP_SCAN_LIST_COUNT as _,
+            ble_ll_rsp_dup_list_count:
+                crate::sys::CONFIG_BT_LE_LL_DUP_SCAN_LIST_COUNT as _,
+            ble_ll_adv_dup_list_count:
+                crate::sys::CONFIG_BT_LE_LL_DUP_SCAN_LIST_COUNT as _,
             ble_ll_tx_pwr_dbm: crate::sys::BLE_LL_TX_PWR_DBM_N as _,
             rtc_freq: crate::sys::RTC_FREQ_N as _,
             ble_ll_sca: crate::sys::CONFIG_BT_LE_LL_SCA as _,
             ble_ll_scan_phy_number: crate::sys::BLE_LL_SCAN_PHY_NUMBER_N as _,
-            ble_ll_conn_def_auth_pyld_tmo: crate::sys::BLE_LL_CONN_DEF_AUTH_PYLD_TMO_N as _,
+            ble_ll_conn_def_auth_pyld_tmo:
+                crate::sys::BLE_LL_CONN_DEF_AUTH_PYLD_TMO_N as _,
             ble_ll_jitter_usecs: crate::sys::BLE_LL_JITTER_USECS_N as _,
-            ble_ll_sched_max_adv_pdu_usecs: crate::sys::BLE_LL_SCHED_MAX_ADV_PDU_USECS_N as _,
-            ble_ll_sched_direct_adv_max_usecs: crate::sys::BLE_LL_SCHED_DIRECT_ADV_MAX_USECS_N as _,
-            ble_ll_sched_adv_max_usecs: crate::sys::BLE_LL_SCHED_ADV_MAX_USECS_N as _,
-            ble_scan_rsp_data_max_len: crate::sys::DEFAULT_BT_LE_SCAN_RSP_DATA_MAX_LEN_N as _,
-            ble_ll_cfg_num_hci_cmd_pkts: crate::sys::BLE_LL_CFG_NUM_HCI_CMD_PKTS_N as _,
-            ble_ll_ctrl_proc_timeout_ms: crate::sys::BLE_LL_CTRL_PROC_TIMEOUT_MS_N,
-            nimble_max_connections: crate::sys::DEFAULT_BT_LE_MAX_CONNECTIONS as _,
-            ble_whitelist_size: crate::sys::DEFAULT_BT_NIMBLE_WHITELIST_SIZE as _,
+            ble_ll_sched_max_adv_pdu_usecs:
+                crate::sys::BLE_LL_SCHED_MAX_ADV_PDU_USECS_N as _,
+            ble_ll_sched_direct_adv_max_usecs:
+                crate::sys::BLE_LL_SCHED_DIRECT_ADV_MAX_USECS_N as _,
+            ble_ll_sched_adv_max_usecs: crate::sys::BLE_LL_SCHED_ADV_MAX_USECS_N
+                as _,
+            ble_scan_rsp_data_max_len:
+                crate::sys::DEFAULT_BT_LE_SCAN_RSP_DATA_MAX_LEN_N as _,
+            ble_ll_cfg_num_hci_cmd_pkts:
+                crate::sys::BLE_LL_CFG_NUM_HCI_CMD_PKTS_N as _,
+            ble_ll_ctrl_proc_timeout_ms:
+                crate::sys::BLE_LL_CTRL_PROC_TIMEOUT_MS_N,
+            nimble_max_connections: crate::sys::DEFAULT_BT_LE_MAX_CONNECTIONS
+                as _,
+            ble_whitelist_size: crate::sys::DEFAULT_BT_NIMBLE_WHITELIST_SIZE
+                as _,
             ble_acl_buf_size: crate::sys::DEFAULT_BT_LE_ACL_BUF_SIZE as _,
             ble_acl_buf_count: crate::sys::DEFAULT_BT_LE_ACL_BUF_COUNT as _,
-            ble_hci_evt_buf_size: crate::sys::DEFAULT_BT_LE_HCI_EVT_BUF_SIZE as _,
-            ble_multi_adv_instances: crate::sys::DEFAULT_BT_LE_MAX_EXT_ADV_INSTANCES as _,
-            ble_ext_adv_max_size: crate::sys::DEFAULT_BT_LE_EXT_ADV_MAX_SIZE as _,
+            ble_hci_evt_buf_size: crate::sys::DEFAULT_BT_LE_HCI_EVT_BUF_SIZE
+                as _,
+            ble_multi_adv_instances:
+                crate::sys::DEFAULT_BT_LE_MAX_EXT_ADV_INSTANCES as _,
+            ble_ext_adv_max_size: crate::sys::DEFAULT_BT_LE_EXT_ADV_MAX_SIZE
+                as _,
             controller_task_stack_size: crate::sys::NIMBLE_LL_STACK_SIZE as _,
             controller_task_prio: crate::sys::ESP_TASK_BT_CONTROLLER_PRIO as _,
             controller_run_cpu: 0,
@@ -635,36 +718,41 @@ where
                 esp_idf_version = "5.2",
                 not(any(esp32c6, esp32h2))
             ))]
-            ble_hci_uart_data_bits: crate::sys::DEFAULT_BT_LE_HCI_UART_DATA_BITS as _,
-            #[cfg(any(
-                esp_idf_version_major = "4",
-                esp_idf_version = "5.0",
-                esp_idf_version = "5.1",
-                esp_idf_version = "5.2",
-                not(any(esp32c6, esp32h2))
-            ))]
-            ble_hci_uart_stop_bits: crate::sys::DEFAULT_BT_LE_HCI_UART_STOP_BITS as _,
-            #[cfg(any(
-                esp_idf_version_major = "4",
-                esp_idf_version = "5.0",
-                esp_idf_version = "5.1",
-                esp_idf_version = "5.2",
-                not(any(esp32c6, esp32h2))
-            ))]
-            ble_hci_uart_flow_ctrl: crate::sys::DEFAULT_BT_LE_HCI_UART_FLOW_CTRL as _,
-            #[cfg(any(
-                esp_idf_version_major = "4",
-                esp_idf_version = "5.0",
-                esp_idf_version = "5.1",
-                esp_idf_version = "5.2",
-                not(any(esp32c6, esp32h2))
-            ))]
-            ble_hci_uart_uart_parity: crate::sys::DEFAULT_BT_LE_HCI_UART_PARITY as _,
-            enable_tx_cca: crate::sys::DEFAULT_BT_LE_TX_CCA_ENABLED as _,
-            cca_rssi_thresh: (256 - crate::sys::DEFAULT_BT_LE_CCA_RSSI_THRESH) as _,
-            sleep_en: crate::sys::NIMBLE_SLEEP_ENABLE as _,
-            coex_phy_coded_tx_rx_time_limit: crate::sys::DEFAULT_BT_LE_COEX_PHY_CODED_TX_RX_TLIM_EFF
+            ble_hci_uart_data_bits: crate::sys::DEFAULT_BT_LE_HCI_UART_DATA_BITS
                 as _,
+            #[cfg(any(
+                esp_idf_version_major = "4",
+                esp_idf_version = "5.0",
+                esp_idf_version = "5.1",
+                esp_idf_version = "5.2",
+                not(any(esp32c6, esp32h2))
+            ))]
+            ble_hci_uart_stop_bits: crate::sys::DEFAULT_BT_LE_HCI_UART_STOP_BITS
+                as _,
+            #[cfg(any(
+                esp_idf_version_major = "4",
+                esp_idf_version = "5.0",
+                esp_idf_version = "5.1",
+                esp_idf_version = "5.2",
+                not(any(esp32c6, esp32h2))
+            ))]
+            ble_hci_uart_flow_ctrl: crate::sys::DEFAULT_BT_LE_HCI_UART_FLOW_CTRL
+                as _,
+            #[cfg(any(
+                esp_idf_version_major = "4",
+                esp_idf_version = "5.0",
+                esp_idf_version = "5.1",
+                esp_idf_version = "5.2",
+                not(any(esp32c6, esp32h2))
+            ))]
+            ble_hci_uart_uart_parity: crate::sys::DEFAULT_BT_LE_HCI_UART_PARITY
+                as _,
+            enable_tx_cca: crate::sys::DEFAULT_BT_LE_TX_CCA_ENABLED as _,
+            cca_rssi_thresh: (256 - crate::sys::DEFAULT_BT_LE_CCA_RSSI_THRESH)
+                as _,
+            sleep_en: crate::sys::NIMBLE_SLEEP_ENABLE as _,
+            coex_phy_coded_tx_rx_time_limit:
+                crate::sys::DEFAULT_BT_LE_COEX_PHY_CODED_TX_RX_TLIM_EFF as _,
             dis_scan_backoff: crate::sys::NIMBLE_DISABLE_SCAN_BACKOFF as _,
             ble_scan_classify_filter_enable: 1,
             main_xtal_freq: crate::sys::CONFIG_XTAL_FREQ as _,
@@ -706,6 +794,259 @@ where
         let device_name = to_cstring_arg(device_name)?;
 
         esp!(unsafe { esp_bt_dev_set_device_name(device_name.as_ptr()) })
+    }
+
+    /// timeout given in millis
+    /// blocks until callback is finished
+    pub fn start_scan<F>(
+        &mut self,
+        timeout: u32,
+        callback: F,
+    ) -> Result<(), EspError>
+    where
+        F: FnMut(DeviceData) + 'static,
+    {
+        let ticks_count = (timeout / 1250).min(0x30).max(1) as u8;
+
+        //connectable discoverable device
+        esp!(unsafe {
+            esp_bt_gap_set_scan_mode(
+                ConnectionMode::Connectable as u32,
+                DiscoveryMode::GeneralDiscoverable as u32,
+            )
+        })?;
+
+        esp!(unsafe { esp_bt_gap_register_callback(Some(handle_gap_event)) })?;
+        esp!(unsafe { esp_bt_gap_start_discovery(0, ticks_count, 0x0) })?;
+
+        unsafe { CALLBACK = Some(std::boxed::Box::new(callback)) };
+
+        delay::FreeRtos::delay_ms(timeout);
+
+        log::info!("Scan is stopped");
+
+        esp!(unsafe { esp_bt_gap_cancel_discovery() })?;
+
+        unsafe { CALLBACK = None };
+
+        Ok(())
+    }
+}
+
+#[repr(u32)]
+pub enum ConnectionMode {
+    NotConnectable = 0,
+    Connectable = 1,
+}
+
+#[repr(u32)]
+pub enum DiscoveryMode {
+    NotDiscoverable = 0,
+    LimitedDiscoverable = 1,
+    GeneralDiscoverable = 2,
+}
+
+const ESP_BT_GAP_EIR_DATA_LEN: usize = 240;
+
+#[derive(Debug, Default)]
+pub struct DeviceData {
+    pub addr: [u8; 6],
+    pub name: Option<alloc::string::String>,
+    pub rssi: i8,
+}
+
+
+#[repr(u32)]
+enum CbEvent {
+    /// Device discovery result event
+    ESP_BT_GAP_DISC_RES_EVT = 0,
+    /// Discovery state changed event
+    ESP_BT_GAP_DISC_STATE_CHANGED_EVT = 1,
+    /// Get remote services event
+    ESP_BT_GAP_RMT_SRVCS_EVT = 2,
+    /// Get remote service record event */
+    ESP_BT_GAP_RMT_SRVC_REC_EVT = 3,
+    /// Authentication complete event */
+    ESP_BT_GAP_AUTH_CMPL_EVT = 4,
+    /// Legacy Pairing Pin code request */
+    ESP_BT_GAP_PIN_REQ_EVT = 5,
+    /// Security Simple Pairing User Confirmation request. */
+    ESP_BT_GAP_CFM_REQ_EVT = 6,
+    /// Security Simple Pairing Passkey Notification */
+    ESP_BT_GAP_KEY_NOTIF_EVT = 7,
+    /// Security Simple Pairing Passkey request */
+    ESP_BT_GAP_KEY_REQ_EVT = 8,
+    /// Read rssi event
+    ESP_BT_GAP_READ_RSSI_DELTA_EVT = 9,
+    /// Config EIR data event
+    ESP_BT_GAP_CONFIG_EIR_DATA_EVT = 10,
+    /// Set AFH channels event
+    ESP_BT_GAP_SET_AFH_CHANNELS_EVT = 11,
+    /// Read Remote Name event
+    ESP_BT_GAP_READ_REMOTE_NAME_EVT = 12,
+    /// remove bond device complete event */
+    ESP_BT_GAP_MODE_CHG_EVT = 13,
+    /// QOS complete event */
+    ESP_BT_GAP_REMOVE_BOND_DEV_COMPLETE_EVT = 14,
+    /// ACL connection complete status event */
+    ESP_BT_GAP_QOS_CMPL_EVT = 15,
+    /// ACL disconnection complete status event */
+    ESP_BT_GAP_ACL_CONN_CMPL_STAT_EVT = 16,
+    ESP_BT_GAP_ACL_DISCONN_CMPL_STAT_EVT = 17,
+    ESP_BT_GAP_EVT_MAX = 18,
+}
+
+impl TryFrom<u32> for CbEvent {
+    type Error = ();
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        let kind = match value {
+            0 => Self::ESP_BT_GAP_DISC_RES_EVT,
+            1 => Self::ESP_BT_GAP_DISC_STATE_CHANGED_EVT,
+            2 => Self::ESP_BT_GAP_RMT_SRVCS_EVT,
+            3 => Self::ESP_BT_GAP_RMT_SRVC_REC_EVT,
+            4 => Self::ESP_BT_GAP_AUTH_CMPL_EVT,
+            5 => Self::ESP_BT_GAP_PIN_REQ_EVT,
+            6 => Self::ESP_BT_GAP_CFM_REQ_EVT,
+            7 => Self::ESP_BT_GAP_KEY_NOTIF_EVT,
+            8 => Self::ESP_BT_GAP_KEY_REQ_EVT,
+            9 => Self::ESP_BT_GAP_READ_RSSI_DELTA_EVT,
+            10 => Self::ESP_BT_GAP_CONFIG_EIR_DATA_EVT,
+            11 => Self::ESP_BT_GAP_SET_AFH_CHANNELS_EVT,
+            12 => Self::ESP_BT_GAP_READ_REMOTE_NAME_EVT,
+            13 => Self::ESP_BT_GAP_MODE_CHG_EVT,
+            14 => Self::ESP_BT_GAP_REMOVE_BOND_DEV_COMPLETE_EVT,
+            15 => Self::ESP_BT_GAP_QOS_CMPL_EVT,
+            16 => Self::ESP_BT_GAP_ACL_CONN_CMPL_STAT_EVT,
+            17 => Self::ESP_BT_GAP_ACL_DISCONN_CMPL_STAT_EVT,
+            18 => Self::ESP_BT_GAP_EVT_MAX,
+            _ => {
+                return Err(());
+            }
+        };
+
+        Ok(kind)
+    }
+}
+
+static mut CALLBACK: Option<std::boxed::Box<dyn FnMut(DeviceData)>> = None;
+
+const ESP_BT_GAP_MAX_BDNAME_LEN: usize = 248;
+
+#[repr(u8)]
+pub enum ExtendedInquiryKind {
+    CompleteLocalName = 0x09,
+    ShortLocalName = 0x08,
+}
+
+impl DeviceData {
+    pub fn new_from(params: &esp_idf_hal::sys::esp_bt_gap_cb_param_t) -> Self {
+        let mut empty_device = Self::default();
+
+        let props_count = unsafe { params.disc_res.num_prop as usize };
+
+        empty_device.addr = unsafe { params.disc_res.bda.clone() };
+
+        for i in 0..props_count {
+            let value = unsafe {
+                let raw_value = params.disc_res.prop.add(i);
+                &mut *raw_value
+            };
+
+            match value.type_ {
+                1 => {
+                    //device name
+                    let length =
+                        ESP_BT_GAP_MAX_BDNAME_LEN.min(value.len as usize);
+                    let raw_name = unsafe {
+                        core::slice::from_raw_parts(
+                            value.val.cast::<u8>(),
+                            length,
+                        )
+                    };
+                    let name = alloc::string::String::from_utf8_lossy(raw_name);
+                    empty_device.name = Some(name.to_string());
+                }
+                2 => { //device class
+                }
+                3 => {
+                    //device rssi
+                    empty_device.rssi = unsafe { *value.val.cast::<i8>() };
+                }
+                4 => {
+                    //extended inquiry response
+                    let _ = empty_device.set_name_from_eiq(value.val.cast());
+                }
+                _ => {} //not used id
+            }
+        }
+
+        empty_device
+    }
+
+    fn set_name_from_eiq(&mut self, eiq: *mut u8) -> Result<(), ()> {
+        let mut ptr_name: *mut u8; 
+        let mut output_len = 0u8;
+
+        if eiq.is_null() {
+            return Err(());
+        }
+
+        // Try to resolve complete local name first
+        ptr_name = unsafe {
+            esp_bt_gap_resolve_eir_data(
+                eiq,
+                ExtendedInquiryKind::CompleteLocalName as u8,
+                &mut output_len,
+            )
+        };
+
+        if ptr_name.is_null() {
+            ptr_name = unsafe {
+                esp_bt_gap_resolve_eir_data(
+                    eiq,
+                    ExtendedInquiryKind::ShortLocalName as u8,
+                    &mut output_len,
+                )
+            };
+        }
+
+        if !ptr_name.is_null() {
+            output_len = output_len.min(ESP_BT_GAP_MAX_BDNAME_LEN as u8);
+
+            let raw_name = unsafe {
+                core::slice::from_raw_parts(ptr_name.cast::<u8>(), output_len as usize)
+            };
+
+            let name = alloc::string::String::from_utf8_lossy(raw_name);
+            self.name = Some(name.to_string());
+        }
+
+        Ok(())
+    }
+}
+
+unsafe extern "C" fn handle_gap_event(
+    raw_event: u32,
+    raw_param: *mut esp_idf_hal::sys::esp_bt_gap_cb_param_t,
+) {
+    let params = unsafe { &mut *raw_param };
+    let event = CbEvent::try_from(raw_event).expect("invalid event");
+
+    match event {
+        CbEvent::ESP_BT_GAP_DISC_RES_EVT => {
+            let device_data = DeviceData::new_from(params);
+
+            log::debug!("New device: {:?}", device_data);
+            let maybe_callback = unsafe { CALLBACK.as_mut() };
+            if let Some(callback) = maybe_callback {
+                callback(device_data);
+            } else {
+                log::debug!("No callback is provided");
+            }
+        }
+        _ => {
+            //not used
+        }
     }
 }
 

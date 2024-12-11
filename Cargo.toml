@@ -28,7 +28,7 @@ default = ["std", "binstart"]
 std = ["alloc", "log/std", "esp-idf-hal/std", "embedded-svc/std", "futures-io"]
 alloc = ["esp-idf-hal/alloc", "embedded-svc/alloc", "uncased/alloc"]
 nightly = ["embedded-svc/nightly", "esp-idf-hal/nightly"]
-experimental = ["embedded-svc/experimental", "esp-idf-hal/experimental"]
+experimental = ["embedded-svc/experimental"]
 
 # Propagated esp-idf-hal features
 critical-section = ["esp-idf-hal/critical-section"]
